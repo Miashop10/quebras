@@ -167,7 +167,7 @@
             <select id="fFilial"></select>
           </div>
           <div><label>Código do produto *</label><input id="fCodigo" inputmode="numeric"></div>
-          <div><label>Quantidade *</label><input id="fQuantidade" type="number" step="1"></div>
+          <div><label>Quantidade *</label><input id="fQuantidade" type="number" step="1" min="1"></div>
           <div><label>Fornecedor</label><input id="fFornecedor"></div>
           <div><label>Data da quebra</label><input id="fData" readonly></div>
           <div>
@@ -175,7 +175,6 @@
             <select id="fTipo" onchange="mudouTipo()">
               <option value="quebra na loja">Quebra na loja</option>
               <option value="quebra fornecedor">Quebra fornecedor</option>
-              <option value="ajuste estoque">Ajuste estoque</option>
             </select>
           </div>
           <div id="campoNF" class="oculto"><label>Nº da NF</label><input id="fNF"></div>
@@ -197,7 +196,6 @@
               <option value="">Todos</option>
               <option value="quebra na loja">Quebra na loja</option>
               <option value="quebra fornecedor">Quebra fornecedor</option>
-              <option value="ajuste estoque">Ajuste estoque</option>
             </select>
           </div>
           <div><label>Código do produto</label><input id="hCodigo"></div>
@@ -225,6 +223,26 @@
         <p style="color:var(--cinza);font-size:13px;margin-bottom:14px">Quebras registradas pelas filiais aguardando lançamento. Ao lançar, o descarte aparece no histórico da filial.</p>
         <div id="listaShop9"></div>
         <div id="s9Vazio" class="vazio oculto">Nenhuma quebra pendente. 👍</div>
+      </div>
+
+      <div class="card">
+        <h2>Histórico de lançamentos — Shop9</h2>
+        <div class="filtros">
+          <div><label>Filial</label><select id="s9hFilial"><option value="">Todas</option></select></div>
+          <div><label>Data do lançamento de</label><input type="date" id="s9hDe"></div>
+          <div><label>Data do lançamento até</label><input type="date" id="s9hAte"></div>
+          <button class="btn-s" onclick="limparFiltrosS9()">Limpar</button>
+        </div>
+        <div class="tab-wrap">
+          <table>
+            <thead><tr>
+              <th>Foto</th><th>Código</th><th>Qtd</th><th>Filial</th><th>Data quebra</th>
+              <th>Nº transf.</th><th>Custo unit. (R$)</th><th>Data lançamento</th><th>Descarte</th>
+            </tr></thead>
+            <tbody id="corpoS9Hist"></tbody>
+          </table>
+        </div>
+        <div id="s9HistVazio" class="vazio oculto">Nenhum lançamento realizado ainda.</div>
       </div>
     </section>
 
@@ -335,6 +353,12 @@ function iniciarApp(){
 
   $('fData').value = brData(hojeLocal());
   ['hFilial','hTipo','hCodigo','hDataDe','hDataAte'].forEach(id=>$(id).addEventListener('input', desenharHistorico));
+  if(master){
+    const s9f = $('s9hFilial');
+    s9f.innerHTML = '<option value="">Todas</option>';
+    sessao.filiais.forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; s9f.appendChild(o); });
+    ['s9hFilial','s9hDe','s9hAte'].forEach(id=>$(id).addEventListener('input', desenharS9Hist));
+  }
 
   carregarQuebras();
   if(master) carregarFiliais();
@@ -382,15 +406,13 @@ function removerFoto(){
 function mudouTipo(){
   const t = $('fTipo').value;
   $('campoNF').classList.toggle('oculto', t !== 'quebra fornecedor');
-  $('fQuantidade').min = (t === 'ajuste estoque') ? '' : '1';
 }
 async function salvarQuebra(){
   const tipo = $('fTipo').value;
   const qtd  = Number($('fQuantidade').value);
   if(!$('fResponsavel').value.trim()) return toast('Informe o responsável pelo registro.', true);
   if(!$('fCodigo').value.trim())      return toast('Informe o código do produto.', true);
-  if(!$('fQuantidade').value || isNaN(qtd) || qtd===0) return toast('Informe a quantidade.', true);
-  if(tipo !== 'ajuste estoque' && qtd < 0) return toast('Quantidade negativa só em ajuste de estoque.', true);
+  if(!$('fQuantidade').value || isNaN(qtd) || qtd <= 0) return toast('Informe uma quantidade válida (maior que zero).', true);
   if(sessao.role==='master' && !$('fFilial').value) return toast('Cadastre/selecione uma filial.', true);
 
   const btn = $('btnSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
@@ -505,7 +527,7 @@ function desenharShop9(){
       +'</div>'
       +'<div class="s9-form">'
         +'<div><label>Nº da transferência</label><input id="s9t_'+q.id+'"></div>'
-        +'<div><label>Valor de custo (R$)</label><input id="s9c_'+q.id+'" type="number" step="0.01" inputmode="decimal"></div>'
+        +'<div><label>Valor de custo unitário (R$)</label><input id="s9c_'+q.id+'" type="number" step="0.01" inputmode="decimal"></div>'
         +'<div><label>Data do lançamento</label><input id="s9d_'+q.id+'" type="date" value="'+hojeLocal()+'"></div>'
         +'<div><label>Descarte</label><select id="s9x_'+q.id+'" onchange="s9Avaria(\''+q.id+'\')">'
           +'<option value="">Selecione…</option>'
@@ -519,6 +541,49 @@ function desenharShop9(){
       +'</div>'
     +'</div>';
   }).join('');
+  desenharS9Hist();
+}
+function limparFiltrosS9(){
+  ['s9hFilial','s9hDe','s9hAte'].forEach(id=>$(id).value='');
+  desenharS9Hist();
+}
+function desenharS9Hist(){
+  const fF = $('s9hFilial').value, de = $('s9hDe').value, ate = $('s9hAte').value;
+  const lanc = quebras.filter(q=>{
+    if(q.status !== 'lancado') return false;
+    if(fF && q.filial !== fF) return false;
+    if(de  && q.shop9Data && q.shop9Data < de)  return false;
+    if(ate && q.shop9Data && q.shop9Data > ate) return false;
+    return true;
+  });
+  let totUn = 0, totVal = 0;
+  $('corpoS9Hist').innerHTML = lanc.map(q=>{
+    const qtd = Number(q.quantidade) || 0;
+    const unit = parseFloat(String(q.shop9Custo).replace(',','.')) || 0;
+    totUn += qtd; totVal += qtd * unit;
+    return '<tr>'
+    +'<td>'+fotoHtml(q)+'</td>'
+    +'<td><b>'+esc(q.codigo)+'</b></td>'
+    +'<td class="'+(qtd<0?'qtd-neg':'')+'">'+esc(q.quantidade)+'</td>'
+    +'<td>'+esc(q.filial)+'</td>'
+    +'<td>'+brData(q.dataQuebra)+'</td>'
+    +'<td>'+esc(q.shop9Transferencia)+'</td>'
+    +'<td>'+moeda(unit)+'</td>'
+    +'<td>'+brData(q.shop9Data)+'</td>'
+    +'<td>'+pillDescarte(q)+'</td>'
+    +'</tr>';
+  }).join('')
+  + (lanc.length ? '<tr style="background:#F5F7FA;font-weight:700">'
+    +'<td colspan="2" style="text-transform:uppercase;font-size:12px;color:var(--cinza)">Total dos filtros</td>'
+    +'<td class="'+(totUn<0?'qtd-neg':'')+'">'+totUn+'</td>'
+    +'<td colspan="3"></td>'
+    +'<td style="white-space:nowrap">'+moeda(totVal)+'</td>'
+    +'<td colspan="2"></td>'
+    +'</tr>' : '');
+  $('s9HistVazio').classList.toggle('oculto', lanc.length > 0);
+}
+function moeda(v){
+  return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 }
 function s9Avaria(id){
   $('s9ow_'+id).classList.toggle('oculto', $('s9x_'+id).value !== 'avaria');
@@ -570,6 +635,10 @@ function iniciarSelectFilial_(){
   hf.innerHTML = '<option value="">Todas</option>';
   sessao.filiais.forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; hf.appendChild(o); });
   if(sessao.filiais.includes(hAtual)) hf.value = hAtual;
+  const s9f = $('s9hFilial'); const sAtual = s9f.value;
+  s9f.innerHTML = '<option value="">Todas</option>';
+  sessao.filiais.forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; s9f.appendChild(o); });
+  if(sessao.filiais.includes(sAtual)) s9f.value = sAtual;
 }
 async function criarFilial(){
   const nome = $('nfNome').value.trim(), senha = $('nfSenha').value.trim();
