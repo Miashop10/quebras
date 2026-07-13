@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Miashop · Quebras</title>
+<style>
+  :root{
+    --azul:#173A5E; --azul-esc:#0F2A45; --laranja:#E8611C;
+    --fundo:#F2F4F7; --card:#FFFFFF; --borda:#DDE3EA;
+    --texto:#1C2733; --cinza:#66707C;
+    --verde:#1E7F4F; --vermelho:#C0392B; --amarelo:#B7791F;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--fundo);color:var(--texto);font-size:15px}
+  input,select,textarea,button{font:inherit}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--borda);border-radius:8px;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--azul);outline-offset:-1px}
+  input[readonly]{background:#EEF1F5;color:var(--cinza)}
+  label{display:block;font-size:12.5px;font-weight:600;color:var(--cinza);margin-bottom:4px}
+  button{cursor:pointer;border:none;border-radius:8px}
+  .btn-p{background:var(--laranja);color:#fff;font-weight:700;padding:11px 18px}
+  .btn-p:hover{filter:brightness(.94)}
+  .btn-s{background:#fff;border:1px solid var(--borda);padding:9px 14px;color:var(--texto)}
+  .btn-s:hover{background:#F5F7FA}
+  .btn-mini{padding:6px 10px;font-size:13px;border-radius:6px}
+
+  /* ---- Login ---- */
+  #telaLogin{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--azul-esc),var(--azul))}
+  .login-box{background:#fff;border-radius:14px;padding:34px 30px;width:100%;max-width:360px;margin:16px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  .login-box h1{font-size:22px;color:var(--azul);margin-bottom:2px}
+  .login-box p{color:var(--cinza);font-size:13px;margin-bottom:20px}
+  .login-box .btn-p{width:100%;margin-top:14px}
+  #loginErro{color:var(--vermelho);font-size:13px;margin-top:10px;display:none}
+
+  /* ---- App ---- */
+  header{background:var(--azul);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+  header .marca{font-weight:800;letter-spacing:.4px}
+  header .marca span{color:var(--laranja)}
+  header .quem{margin-left:auto;font-size:13px;opacity:.9}
+  header .sair{background:rgba(255,255,255,.14);color:#fff;padding:7px 12px;font-size:13px}
+
+  nav{display:flex;gap:6px;background:#fff;border-bottom:1px solid var(--borda);padding:8px 12px;overflow-x:auto;position:sticky;top:52px;z-index:19}
+  nav button{background:none;padding:9px 14px;border-radius:8px;font-weight:600;color:var(--cinza);white-space:nowrap}
+  nav button.ativo{background:var(--azul);color:#fff}
+  nav .badge{background:var(--laranja);color:#fff;border-radius:20px;font-size:11.5px;padding:1px 7px;margin-left:5px}
+
+  main{max-width:1180px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:18px;margin-bottom:16px}
+  .card h2{font-size:16px;color:var(--azul);margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .campo-obs{grid-column:1/-1}
+  .oculto{display:none!important}
+
+  /* foto */
+  .foto-area{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .foto-prev{width:86px;height:86px;border-radius:10px;object-fit:cover;border:1px solid var(--borda)}
+  .foto-vazia{width:86px;height:86px;border-radius:10px;border:2px dashed var(--borda);display:flex;align-items:center;justify-content:center;color:var(--cinza);font-size:11px;text-align:center}
+
+  /* filtros */
+  .filtros{display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-bottom:12px}
+  .filtros>div{min-width:130px;flex:1}
+  .filtros .btn-s{flex:0}
+
+  /* tabela histórico */
+  .tab-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{background:#F5F7FA;color:var(--cinza);text-align:left;padding:8px;border-bottom:2px solid var(--borda);white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  td{padding:8px;border-bottom:1px solid #EDF0F4;vertical-align:middle}
+  tr:hover td{background:#FAFBFD}
+  .mini-foto{width:46px;height:46px;object-fit:cover;border-radius:7px;cursor:zoom-in;border:1px solid var(--borda)}
+  .sem-foto{width:46px;height:46px;border-radius:7px;background:#EEF1F5;display:flex;align-items:center;justify-content:center;color:#B6BEC8;font-size:10px}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+  .p-loja{background:#FDEBE4;color:var(--laranja)}
+  .p-forn{background:#E6EEF8;color:var(--azul)}
+  .p-ajus{background:#F3EAFB;color:#7A3FA8}
+  .p-pend{background:#FFF4DC;color:var(--amarelo)}
+  .p-jogarfora{background:#FBE6E3;color:var(--vermelho)}
+  .p-enviarcd{background:#E3F2EA;color:var(--verde)}
+  .p-avaria{background:#FFF4DC;color:var(--amarelo)}
+  .p-consertar{background:#E6EEF8;color:var(--azul)}
+  .qtd-neg{color:var(--vermelho);font-weight:700}
+
+  /* shop9 */
+  .s9-item{border:1px solid var(--borda);border-radius:12px;padding:14px;margin-bottom:12px;background:#fff}
+  .s9-topo{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .s9-topo .info b{font-size:15px}
+  .s9-topo .info div{font-size:13px;color:var(--cinza)}
+  .s9-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;align-items:end}
+  .s9-form .btn-p{padding:10px}
+
+  /* filiais */
+  .fil-linha{display:flex;gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #EDF0F4;flex-wrap:wrap}
+  .fil-linha b{min-width:140px}
+  .fil-linha input{max-width:170px}
+
+  /* lightbox */
+  #lightbox{position:fixed;inset:0;background:rgba(10,15,25,.9);display:none;align-items:center;justify-content:center;z-index:100;cursor:zoom-out}
+  #lightbox img{max-width:94vw;max-height:92vh;border-radius:8px}
+
+  /* toast */
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--azul-esc);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:110;max-width:90vw;text-align:center}
+  #toast.erro{background:var(--vermelho)}
+
+  .vazio{text-align:center;color:var(--cinza);padding:26px;font-size:14px}
+  .carregando{text-align:center;color:var(--cinza);padding:26px}
+
+  @media(max-width:640px){
+    main{padding:10px}
+    .card{padding:14px}
+    nav{top:50px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="telaLogin">
+  <div class="login-box">
+    <h1>MIA<span style="color:var(--laranja)">SHOP</span> · Quebras</h1>
+    <p>Digite a senha da sua filial para entrar</p>
+    <label for="inSenha">Senha</label>
+    <input type="password" id="inSenha" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()">
+    <button class="btn-p" onclick="entrar()">Entrar</button>
+    <div id="loginErro"></div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="oculto">
+  <header>
+    <div class="marca">MIA<span>SHOP</span> · Quebras</div>
+    <div class="quem" id="quemSou"></div>
+    <button class="sair" onclick="sair()">Sair</button>
+  </header>
+
+  <nav id="menu">
+    <button id="tabBtnRegistrar" class="ativo" onclick="abrirAba('registrar')">Registrar Quebras</button>
+    <button id="tabBtnShop9" class="oculto" onclick="abrirAba('shop9')">Lançamento Shop9 <span class="badge" id="badgeShop9">0</span></button>
+    <button id="tabBtnFiliais" class="oculto" onclick="abrirAba('filiais')">⚙️ Filiais</button>
+  </nav>
+
+  <main>
+
+    <!-- ========== ABA REGISTRAR ========== -->
+    <section id="abaRegistrar">
+      <div class="card">
+        <h2>Registrar quebra</h2>
+
+        <div class="foto-area">
+          <img id="fotoPrev" class="foto-prev oculto" alt="Foto do produto">
+          <div id="fotoVazia" class="foto-vazia">Sem<br>foto</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-s" onclick="document.getElementById('inFotoCam').click()">📷 Tirar foto</button>
+            <button class="btn-s" onclick="document.getElementById('inFotoArq').click()">📁 Escolher arquivo</button>
+            <button class="btn-s oculto" id="btnRemoverFoto" onclick="removerFoto()">✕ Remover</button>
+          </div>
+          <input type="file" id="inFotoCam" accept="image/*" capture="environment" class="oculto" onchange="carregarFoto(this)">
+          <input type="file" id="inFotoArq" accept="image/*" class="oculto" onchange="carregarFoto(this)">
+        </div>
+
+        <div class="grid">
+          <div><label>Responsável pelo registro *</label><input id="fResponsavel"></div>
+          <div><label>Funcionário que quebrou</label><input id="fFuncionario"></div>
+          <div>
+            <label>Filial *</label>
+            <select id="fFilial"></select>
+          </div>
+          <div><label>Código do produto *</label><input id="fCodigo" inputmode="numeric"></div>
+          <div><label>Quantidade *</label><input id="fQuantidade" type="number" step="1"></div>
+          <div><label>Fornecedor</label><input id="fFornecedor"></div>
+          <div><label>Data da quebra</label><input id="fData" readonly></div>
+          <div>
+            <label>Tipo de quebra *</label>
+            <select id="fTipo" onchange="mudouTipo()">
+              <option value="quebra na loja">Quebra na loja</option>
+              <option value="quebra fornecedor">Quebra fornecedor</option>
+              <option value="ajuste estoque">Ajuste estoque</option>
+            </select>
+          </div>
+          <div id="campoNF" class="oculto"><label>Nº da NF</label><input id="fNF"></div>
+          <div class="campo-obs"><label>Observações</label><textarea id="fObs" rows="2"></textarea></div>
+        </div>
+
+        <div style="margin-top:14px;text-align:right">
+          <button class="btn-p" id="btnSalvar" onclick="salvarQuebra()">Registrar quebra</button>
+        </div>
+      </div>
+
+      <!-- HISTÓRICO -->
+      <div class="card">
+        <h2>Histórico de lançamentos</h2>
+        <div class="filtros">
+          <div id="filtroFilialWrap"><label>Filial</label><select id="hFilial"><option value="">Todas</option></select></div>
+          <div><label>Tipo de quebra</label>
+            <select id="hTipo">
+              <option value="">Todos</option>
+              <option value="quebra na loja">Quebra na loja</option>
+              <option value="quebra fornecedor">Quebra fornecedor</option>
+              <option value="ajuste estoque">Ajuste estoque</option>
+            </select>
+          </div>
+          <div><label>Código do produto</label><input id="hCodigo"></div>
+          <div><label>Data de</label><input type="date" id="hDataDe"></div>
+          <div><label>Data até</label><input type="date" id="hDataAte"></div>
+          <button class="btn-s" onclick="limparFiltros()">Limpar</button>
+        </div>
+        <div class="tab-wrap">
+          <table>
+            <thead><tr>
+              <th>Foto</th><th>Código</th><th>Qtd</th><th>Tipo</th><th>Filial</th><th>Fornecedor</th>
+              <th>NF</th><th>Responsável</th><th>Funcionário</th><th>Data</th><th>Descarte</th><th>Obs</th><th id="thAcoes" class="oculto"></th>
+            </tr></thead>
+            <tbody id="corpoHistorico"></tbody>
+          </table>
+        </div>
+        <div id="histVazio" class="vazio oculto">Nenhum lançamento encontrado.</div>
+      </div>
+    </section>
+
+    <!-- ========== ABA SHOP9 ========== -->
+    <section id="abaShop9" class="oculto">
+      <div class="card">
+        <h2>Lançamento de quebras — Shop9</h2>
+        <p style="color:var(--cinza);font-size:13px;margin-bottom:14px">Quebras registradas pelas filiais aguardando lançamento. Ao lançar, o descarte aparece no histórico da filial.</p>
+        <div id="listaShop9"></div>
+        <div id="s9Vazio" class="vazio oculto">Nenhuma quebra pendente. 👍</div>
+      </div>
+    </section>
+
+    <!-- ========== ABA FILIAIS ========== -->
+    <section id="abaFiliais" class="oculto">
+      <div class="card">
+        <h2>Criar filial</h2>
+        <div class="grid">
+          <div><label>Nome da filial</label><input id="nfNome"></div>
+          <div><label>Senha</label><input id="nfSenha"></div>
+        </div>
+        <div style="margin-top:12px;text-align:right"><button class="btn-p" onclick="criarFilial()">Criar filial</button></div>
+      </div>
+      <div class="card">
+        <h2>Filiais cadastradas</h2>
+        <div id="listaFiliais" class="carregando">Carregando…</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="lightbox" onclick="this.style.display='none'"><img id="lightboxImg" alt=""></div>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO — cole aqui a URL /exec do Apps Script
+============================================================ */
+const API_URL = 'COLE_AQUI_A_URL_DO_APPS_SCRIPT';
+
+/* ============================================================ */
+let sessao = null;          // {senha, role, filial, filiais:[]}
+let quebras = [];           // cache
+let fotoBase64 = null, fotoMime = null;
+
+/* ---------- util ---------- */
+function $(id){ return document.getElementById(id); }
+function toast(msg, erro){
+  const t = $('toast'); t.textContent = msg;
+  t.className = erro ? 'erro' : ''; t.style.display = 'block';
+  clearTimeout(t._h); t._h = setTimeout(()=>t.style.display='none', 3500);
+}
+function hojeLocal(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function brData(iso){
+  if(!iso) return '';
+  const p = String(iso).slice(0,10).split('-');
+  return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : iso;
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+async function api(payload){
+  payload.senha = payload.senha || (sessao && sessao.senha);
+  const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+  const j = await r.json();
+  if(!j.ok) throw new Error(j.erro || 'Erro no servidor.');
+  return j;
+}
+
+/* ---------- login ---------- */
+async function entrar(){
+  const senha = $('inSenha').value.trim();
+  const err = $('loginErro'); err.style.display = 'none';
+  if(!senha) return;
+  try{
+    const r = await api({ action:'login', senha });
+    sessao = { senha, role:r.role, filial:r.filial, filiais:r.filiais||[] };
+    sessionStorage.setItem('quebras_sessao', JSON.stringify(sessao));
+    iniciarApp();
+  }catch(e){
+    err.textContent = e.message; err.style.display = 'block';
+  }
+}
+function sair(){
+  sessionStorage.removeItem('quebras_sessao');
+  location.reload();
+}
+
+function iniciarApp(){
+  $('telaLogin').classList.add('oculto');
+  $('app').classList.remove('oculto');
+  const master = sessao.role === 'master';
+
+  $('quemSou').textContent = master ? 'Acesso master' : 'Filial: ' + sessao.filial;
+  $('tabBtnShop9').classList.toggle('oculto', !master);
+  $('tabBtnFiliais').classList.toggle('oculto', !master);
+  $('thAcoes').classList.toggle('oculto', !master);
+
+  // Filial no formulário
+  const sel = $('fFilial'); sel.innerHTML = '';
+  if(master){
+    (sessao.filiais||[]).forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; sel.appendChild(o); });
+    if(!sessao.filiais.length){ const o=document.createElement('option'); o.value=''; o.textContent='— cadastre filiais em ⚙️ —'; sel.appendChild(o); }
+  }else{
+    const o=document.createElement('option'); o.value=o.textContent=sessao.filial; sel.appendChild(o);
+    sel.disabled = true;
+  }
+
+  // Filtro de filial: filial logada só vê a própria
+  const hf = $('hFilial');
+  hf.innerHTML = '<option value="">Todas</option>';
+  (master ? sessao.filiais : [sessao.filial]).forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; hf.appendChild(o); });
+  if(!master) $('filtroFilialWrap').classList.add('oculto');
+
+  $('fData').value = brData(hojeLocal());
+  ['hFilial','hTipo','hCodigo','hDataDe','hDataAte'].forEach(id=>$(id).addEventListener('input', desenharHistorico));
+
+  carregarQuebras();
+  if(master) carregarFiliais();
+}
+
+/* ---------- abas ---------- */
+function abrirAba(qual){
+  ['registrar','shop9','filiais'].forEach(a=>{
+    $('aba'+a.charAt(0).toUpperCase()+a.slice(1).replace('9','9')).classList.toggle('oculto', a!==qual);
+  });
+  $('tabBtnRegistrar').classList.toggle('ativo', qual==='registrar');
+  $('tabBtnShop9').classList.toggle('ativo', qual==='shop9');
+  $('tabBtnFiliais').classList.toggle('ativo', qual==='filiais');
+}
+
+/* ---------- foto ---------- */
+function carregarFoto(input){
+  const file = input.files[0]; input.value = '';
+  if(!file) return;
+  const img = new Image();
+  img.onload = ()=>{
+    const MAX = 1200;
+    let w = img.width, h = img.height;
+    if(Math.max(w,h) > MAX){ const k = MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+    const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    const dataUrl = cv.toDataURL('image/jpeg', 0.72);
+    fotoBase64 = dataUrl.split(',')[1]; fotoMime = 'image/jpeg';
+    $('fotoPrev').src = dataUrl;
+    $('fotoPrev').classList.remove('oculto');
+    $('fotoVazia').classList.add('oculto');
+    $('btnRemoverFoto').classList.remove('oculto');
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(file);
+}
+function removerFoto(){
+  fotoBase64 = fotoMime = null;
+  $('fotoPrev').classList.add('oculto');
+  $('fotoVazia').classList.remove('oculto');
+  $('btnRemoverFoto').classList.add('oculto');
+}
+
+/* ---------- registrar ---------- */
+function mudouTipo(){
+  const t = $('fTipo').value;
+  $('campoNF').classList.toggle('oculto', t !== 'quebra fornecedor');
+  $('fQuantidade').min = (t === 'ajuste estoque') ? '' : '1';
+}
+async function salvarQuebra(){
+  const tipo = $('fTipo').value;
+  const qtd  = Number($('fQuantidade').value);
+  if(!$('fResponsavel').value.trim()) return toast('Informe o responsável pelo registro.', true);
+  if(!$('fCodigo').value.trim())      return toast('Informe o código do produto.', true);
+  if(!$('fQuantidade').value || isNaN(qtd) || qtd===0) return toast('Informe a quantidade.', true);
+  if(tipo !== 'ajuste estoque' && qtd < 0) return toast('Quantidade negativa só em ajuste de estoque.', true);
+  if(sessao.role==='master' && !$('fFilial').value) return toast('Cadastre/selecione uma filial.', true);
+
+  const btn = $('btnSalvar'); btn.disabled = true; btn.textContent = 'Salvando…';
+  try{
+    await api({
+      action:'addQuebra',
+      filial: $('fFilial').value,
+      codigo: $('fCodigo').value.trim(),
+      quantidade: qtd,
+      tipo,
+      nf: $('fNF').value.trim(),
+      fornecedor: $('fFornecedor').value.trim(),
+      responsavel: $('fResponsavel').value.trim(),
+      funcionario: $('fFuncionario').value.trim(),
+      obs: $('fObs').value.trim(),
+      fotoBase64, fotoMime
+    });
+    toast('Quebra registrada com sucesso!');
+    ['fCodigo','fQuantidade','fFornecedor','fNF','fObs','fFuncionario'].forEach(id=>$(id).value='');
+    removerFoto();
+    carregarQuebras();
+  }catch(e){ toast(e.message, true); }
+  btn.disabled = false; btn.textContent = 'Registrar quebra';
+}
+
+/* ---------- histórico ---------- */
+async function carregarQuebras(){
+  try{
+    const r = await api({ action:'getQuebras' });
+    quebras = r.quebras || [];
+    desenharHistorico();
+    if(sessao.role === 'master') desenharShop9();
+  }catch(e){ toast(e.message, true); }
+}
+function limparFiltros(){
+  ['hFilial','hTipo','hCodigo','hDataDe','hDataAte'].forEach(id=>$(id).value='');
+  desenharHistorico();
+}
+function pillTipo(t){
+  const cls = t==='quebra na loja'?'p-loja':t==='quebra fornecedor'?'p-forn':'p-ajus';
+  return '<span class="pill '+cls+'">'+esc(t)+'</span>';
+}
+function pillDescarte(q){
+  if(q.status !== 'lancado') return '<span class="pill p-pend">pendente</span>';
+  const map = {'jogar fora':'p-jogarfora','enviar cd':'p-enviarcd','avaria':'p-avaria','consertar':'p-consertar'};
+  let html = '<span class="pill '+(map[q.descarte]||'p-pend')+'">'+esc(q.descarte)+'</span>';
+  if(q.descarte==='avaria' && q.descarteObs) html += '<div style="font-size:11.5px;color:var(--cinza);margin-top:2px">'+esc(q.descarteObs)+'</div>';
+  return html;
+}
+function fotoHtml(q, tam){
+  if(!q.fotoId) return '<div class="sem-foto">—</div>';
+  const src = 'https://drive.google.com/thumbnail?id='+q.fotoId+'&sz=w'+ (tam||200);
+  return '<img class="mini-foto" src="'+src+'" loading="lazy" onclick="ampliar(\''+q.fotoId+'\')" alt="foto">';
+}
+function ampliar(fotoId){
+  $('lightboxImg').src = 'https://drive.google.com/thumbnail?id='+fotoId+'&sz=w1600';
+  $('lightbox').style.display = 'flex';
+}
+function desenharHistorico(){
+  const fF = $('hFilial').value, fT = $('hTipo').value,
+        fC = $('hCodigo').value.trim().toLowerCase(),
+        de = $('hDataDe').value, ate = $('hDataAte').value;
+  const lista = quebras.filter(q=>{
+    if(fF && q.filial !== fF) return false;
+    if(fT && q.tipo !== fT) return false;
+    if(fC && !String(q.codigo).toLowerCase().includes(fC)) return false;
+    if(de  && q.dataQuebra < de)  return false;
+    if(ate && q.dataQuebra > ate) return false;
+    return true;
+  });
+  const master = sessao.role === 'master';
+  const tb = $('corpoHistorico');
+  tb.innerHTML = lista.map(q=>'<tr>'
+    +'<td>'+fotoHtml(q)+'</td>'
+    +'<td><b>'+esc(q.codigo)+'</b></td>'
+    +'<td class="'+(Number(q.quantidade)<0?'qtd-neg':'')+'">'+esc(q.quantidade)+'</td>'
+    +'<td>'+pillTipo(q.tipo)+'</td>'
+    +'<td>'+esc(q.filial)+'</td>'
+    +'<td>'+esc(q.fornecedor)+'</td>'
+    +'<td>'+esc(q.nf)+'</td>'
+    +'<td>'+esc(q.responsavel)+'</td>'
+    +'<td>'+esc(q.funcionario)+'</td>'
+    +'<td>'+brData(q.dataQuebra)+'</td>'
+    +'<td>'+pillDescarte(q)+'</td>'
+    +'<td style="max-width:180px">'+esc(q.obs)+'</td>'
+    +(master ? '<td><button class="btn-s btn-mini" onclick="excluirQuebra(\''+q.id+'\')">🗑️</button></td>' : '')
+    +'</tr>').join('');
+  $('histVazio').classList.toggle('oculto', lista.length > 0);
+}
+async function excluirQuebra(id){
+  if(!confirm('Excluir este registro? A foto também será removida do Drive.')) return;
+  try{
+    await api({ action:'deleteQuebra', id });
+    toast('Registro excluído.');
+    carregarQuebras();
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ---------- Shop9 ---------- */
+function desenharShop9(){
+  const pend = quebras.filter(q=>q.status !== 'lancado');
+  $('badgeShop9').textContent = pend.length;
+  const box = $('listaShop9');
+  $('s9Vazio').classList.toggle('oculto', pend.length > 0);
+  box.innerHTML = pend.map(q=>{
+    return '<div class="s9-item" id="s9_'+q.id+'">'
+      +'<div class="s9-topo">'
+        + fotoHtml(q)
+        +'<div class="info"><b>Cód. '+esc(q.codigo)+'</b> · '+esc(q.quantidade)+' un — '+pillTipo(q.tipo)
+        +'<div>'+esc(q.filial)+' · '+brData(q.dataQuebra)
+        +(q.nf?' · NF '+esc(q.nf):'')+(q.fornecedor?' · '+esc(q.fornecedor):'')+'</div></div>'
+      +'</div>'
+      +'<div class="s9-form">'
+        +'<div><label>Nº da transferência</label><input id="s9t_'+q.id+'"></div>'
+        +'<div><label>Valor de custo (R$)</label><input id="s9c_'+q.id+'" type="number" step="0.01" inputmode="decimal"></div>'
+        +'<div><label>Data do lançamento</label><input id="s9d_'+q.id+'" type="date" value="'+hojeLocal()+'"></div>'
+        +'<div><label>Descarte</label><select id="s9x_'+q.id+'" onchange="s9Avaria(\''+q.id+'\')">'
+          +'<option value="">Selecione…</option>'
+          +'<option value="jogar fora">Jogar fora</option>'
+          +'<option value="enviar cd">Enviar CD</option>'
+          +'<option value="avaria">Avaria</option>'
+          +'<option value="consertar">Consertar</option>'
+        +'</select></div>'
+        +'<div id="s9ow_'+q.id+'" class="oculto"><label>Obs da avaria</label><input id="s9o_'+q.id+'"></div>'
+        +'<div><button class="btn-p" style="width:100%" onclick="lancar(\''+q.id+'\')">Lançar</button></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+function s9Avaria(id){
+  $('s9ow_'+id).classList.toggle('oculto', $('s9x_'+id).value !== 'avaria');
+}
+async function lancar(id){
+  const descarte = $('s9x_'+id).value;
+  if(!descarte) return toast('Selecione o descarte.', true);
+  try{
+    await api({
+      action:'lancarShop9', id,
+      transferencia: $('s9t_'+id).value.trim(),
+      custo: $('s9c_'+id).value.trim(),
+      dataLancamento: $('s9d_'+id).value,
+      descarte,
+      descarteObs: $('s9o_'+id) ? $('s9o_'+id).value.trim() : ''
+    });
+    toast('Lançado no Shop9!');
+    carregarQuebras();
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ---------- Filiais ---------- */
+async function carregarFiliais(){
+  const box = $('listaFiliais');
+  box.innerHTML = '<div class="carregando">Carregando…</div>';
+  try{
+    const r = await api({ action:'getFiliais' });
+    sessao.filiais = (r.filiais||[]).map(f=>f.nome);
+    sessionStorage.setItem('quebras_sessao', JSON.stringify(sessao));
+    if(!r.filiais.length){ box.innerHTML = '<div class="vazio">Nenhuma filial cadastrada.</div>'; return; }
+    box.innerHTML = r.filiais.map((f,i)=>{
+      const enc = encodeURIComponent(f.nome);
+      return '<div class="fil-linha"><b>'+esc(f.nome)+'</b>'
+      +'<input type="text" value="'+esc(f.senha)+'" id="fs_'+i+'">'
+      +'<button class="btn-s btn-mini" onclick="alterarSenha(\''+enc+'\','+i+')">Salvar senha</button>'
+      +'<button class="btn-s btn-mini" onclick="excluirFilial(\''+enc+'\')">🗑️ Excluir</button>'
+      +'</div>';
+    }).join('');
+    // Atualiza selects
+    iniciarSelectFilial_();
+  }catch(e){ box.innerHTML = '<div class="vazio">'+esc(e.message)+'</div>'; }
+}
+function iniciarSelectFilial_(){
+  const sel = $('fFilial'); const atual = sel.value;
+  sel.innerHTML = '';
+  sessao.filiais.forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; sel.appendChild(o); });
+  if(sessao.filiais.includes(atual)) sel.value = atual;
+  const hf = $('hFilial'); const hAtual = hf.value;
+  hf.innerHTML = '<option value="">Todas</option>';
+  sessao.filiais.forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; hf.appendChild(o); });
+  if(sessao.filiais.includes(hAtual)) hf.value = hAtual;
+}
+async function criarFilial(){
+  const nome = $('nfNome').value.trim(), senha = $('nfSenha').value.trim();
+  if(!nome || !senha) return toast('Informe nome e senha.', true);
+  try{
+    const r = await api({ action:'saveFilial', nome, novaSenha: senha });
+    toast(r.msg);
+    $('nfNome').value = ''; $('nfSenha').value = '';
+    carregarFiliais();
+  }catch(e){ toast(e.message, true); }
+}
+async function alterarSenha(nomeEnc, i){
+  const nome = decodeURIComponent(nomeEnc);
+  const senha = $('fs_'+i).value.trim();
+  if(!senha) return toast('A senha não pode ficar vazia.', true);
+  try{
+    const r = await api({ action:'saveFilial', nome, novaSenha: senha });
+    toast(r.msg);
+  }catch(e){ toast(e.message, true); }
+}
+async function excluirFilial(nomeEnc){
+  const nome = decodeURIComponent(nomeEnc);
+  if(!confirm('Excluir a filial "'+nome+'"? Os lançamentos dela continuam no histórico.')) return;
+  try{
+    await api({ action:'deleteFilial', nome });
+    toast('Filial excluída.');
+    carregarFiliais();
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ---------- retomar sessão ---------- */
+(function(){
+  const s = sessionStorage.getItem('quebras_sessao');
+  if(s){ try{ sessao = JSON.parse(s); iniciarApp(); }catch(e){} }
+})();
+</script>
+</body>
+</html>
