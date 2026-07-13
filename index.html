@@ -6,7 +6,7 @@
 <title>Miashop · Quebras</title>
 <style>
   :root{
-    --azul:#E8611C; --azul-esc:#B84E12; --laranja:#E8611C;
+    --azul:#F18634; --azul-esc:#D96C1E; --laranja:#F18634;
     --fundo:#F2F4F7; --card:#FFFFFF; --borda:#DDE3EA;
     --texto:#1C2733; --cinza:#66707C;
     --verde:#1E7F4F; --vermelho:#C0392B; --amarelo:#B7791F;
@@ -78,7 +78,7 @@
   .mini-foto{width:46px;height:46px;object-fit:cover;border-radius:7px;cursor:zoom-in;border:1px solid var(--borda)}
   .sem-foto{width:46px;height:46px;border-radius:7px;background:#EEF1F5;display:flex;align-items:center;justify-content:center;color:#B6BEC8;font-size:10px}
   .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
-  .p-loja{background:#FDEBE4;color:var(--laranja)}
+  .p-loja{background:#FDEBE4;color:#D96C1E}
   .p-forn{background:#E6EEF8;color:#2563A8}
   .p-ajus{background:#F3EAFB;color:#7A3FA8}
   .p-pend{background:#FFF4DC;color:var(--amarelo)}
@@ -89,7 +89,7 @@
   .qtd-neg{color:var(--vermelho);font-weight:700}
 
   /* shop9 */
-  .s9-fil{font-size:14px;color:var(--azul);background:#FDEBE4;border-radius:8px;padding:7px 12px;margin:16px 0 8px}
+  .s9-fil{font-size:14px;color:#D96C1E;background:#FDEBE4;border-radius:8px;padding:7px 12px;margin:16px 0 8px}
   .s9-fil:first-child{margin-top:0}
   .s9-fil span{font-weight:600;color:var(--cinza);font-size:12.5px}
   .s9tab input,.s9tab select{min-width:95px;padding:6px 8px;font-size:13px}
@@ -119,6 +119,10 @@
   /* toast */
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--azul-esc);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:110;max-width:90vw;text-align:center}
   #toast.erro{background:var(--vermelho)}
+
+  .pager{display:flex;gap:10px;align-items:center;justify-content:center;padding:12px 0 2px}
+  .pager span{font-size:13px;color:var(--cinza)}
+  .pager button:disabled{opacity:.4;cursor:default}
 
   .vazio{text-align:center;color:var(--cinza);padding:26px;font-size:14px}
   .carregando{text-align:center;color:var(--cinza);padding:26px}
@@ -234,6 +238,7 @@
           </table>
         </div>
         <div id="histVazio" class="vazio oculto">Nenhum lançamento encontrado.</div>
+        <div id="pagerHist"></div>
       </div>
     </section>
 
@@ -264,6 +269,7 @@
           </table>
         </div>
         <div id="s9HistVazio" class="vazio oculto">Nenhum lançamento realizado ainda.</div>
+        <div id="pagerS9"></div>
       </div>
     </section>
 
@@ -436,16 +442,16 @@ function iniciarApp(){
   if(!master) $('filtroFilialWrap').classList.add('oculto');
 
   $('fData').value = brData(hojeLocal());
-  ['hFilial','hTipo','hCodigo','hDataDe','hDataAte'].forEach(id=>$(id).addEventListener('input', desenharHistorico));
+  ['hFilial','hTipo','hCodigo','hDataDe','hDataAte'].forEach(id=>$(id).addEventListener('input', ()=>{ pagHist=1; desenharHistorico(); }));
   if(master){
     const s9f = $('s9hFilial');
     s9f.innerHTML = '<option value="">Todas</option>';
     sessao.filiais.forEach(f=>{ const o=document.createElement('option'); o.value=o.textContent=f; s9f.appendChild(o); });
-    ['s9hFilial','s9hDe','s9hAte'].forEach(id=>$(id).addEventListener('input', desenharS9Hist));
+    ['s9hFilial','s9hDe','s9hAte'].forEach(id=>$(id).addEventListener('input', ()=>{ pagS9=1; desenharS9Hist(); }));
     // aba transferência
     $('tData').value = hojeLocal();
     popularSelectsTransf_();
-    ['thFilial','thDe','thAte'].forEach(id=>$(id).addEventListener('input', desenharTransferencias));
+    ['thFilial','thDe','thAte'].forEach(id=>$(id).addEventListener('input', ()=>{ pagTransf=1; desenharTransferencias(); }));
     if(!$('tProdutos').children.length) addProdutoRow();
     carregarTransferencias();
   }
@@ -560,6 +566,7 @@ async function carregarQuebras(){
 }
 function limparFiltros(){
   ['hFilial','hTipo','hCodigo','hDataDe','hDataAte'].forEach(id=>$(id).value='');
+  pagHist = 1;
   desenharHistorico();
 }
 function pillTipo(t){
@@ -595,8 +602,11 @@ function desenharHistorico(){
     return true;
   });
   const master = sessao.role === 'master';
+  const totPag = Math.max(1, Math.ceil(lista.length / POR_PAGINA));
+  if(pagHist > totPag) pagHist = totPag;
+  const pagina = lista.slice((pagHist-1)*POR_PAGINA, pagHist*POR_PAGINA);
   const tb = $('corpoHistorico');
-  tb.innerHTML = lista.map(q=>'<tr>'
+  tb.innerHTML = pagina.map(q=>'<tr>'
     +'<td>'+fotoHtml(q)+'</td>'
     +'<td><b>'+esc(q.codigo)+'</b></td>'
     +'<td class="'+(Number(q.quantidade)<0?'qtd-neg':'')+'">'+esc(q.quantidade)+'</td>'
@@ -612,6 +622,7 @@ function desenharHistorico(){
     +(master ? '<td><button class="btn-s btn-mini" onclick="excluirQuebra(\''+q.id+'\')">🗑️</button></td>' : '')
     +'</tr>').join('');
   $('histVazio').classList.toggle('oculto', lista.length > 0);
+  $('pagerHist').innerHTML = pagerHtml(pagHist, lista.length, 'irPagHist');
 }
 async function excluirQuebra(id){
   if(!confirm('Excluir este registro? A foto também será removida do Drive.')) return;
@@ -634,10 +645,28 @@ function desenharShop9(){
   pend.forEach(q=>{ (porFilial[q.filial] = porFilial[q.filial] || []).push(q); });
   const fils = Object.keys(porFilial).sort((a,b)=>a.localeCompare(b,'pt-BR'));
 
-  box.innerHTML = fils.map(fil=>{
-    const itens = porFilial[fil].slice().sort((a,b)=>
-      (a.dataQuebra+'|'+a.criadoEm).localeCompare(b.dataQuebra+'|'+b.criadoEm));
-    return '<h3 class="s9-fil">'+esc(fil)+' <span>('+itens.length+' pendente'+(itens.length>1?'s':'')+')</span></h3>'
+  // achatar na ordem de exibição e fatiar em páginas de 10
+  const ordenado = [];
+  fils.forEach(fil=>{
+    porFilial[fil].slice().sort((a,b)=>
+      (a.dataQuebra+'|'+a.criadoEm).localeCompare(b.dataQuebra+'|'+b.criadoEm))
+      .forEach(q=>ordenado.push(q));
+  });
+  const totPagP = Math.max(1, Math.ceil(ordenado.length / POR_PAGINA));
+  if(pagPend > totPagP) pagPend = totPagP;
+  const paginaP = ordenado.slice((pagPend-1)*POR_PAGINA, pagPend*POR_PAGINA);
+  // reagrupar só o que está na página, mantendo a ordem
+  const gruposPag = [];
+  paginaP.forEach(q=>{
+    const ult = gruposPag[gruposPag.length-1];
+    if(ult && ult.fil === q.filial) ult.itens.push(q);
+    else gruposPag.push({ fil: q.filial, itens: [q] });
+  });
+
+  box.innerHTML = gruposPag.map(g=>{
+    const fil = g.fil, itens = g.itens;
+    const totFil = porFilial[fil].length;
+    return '<h3 class="s9-fil">'+esc(fil)+' <span>('+totFil+' pendente'+(totFil>1?'s':'')+')</span></h3>'
       +'<div class="tab-wrap"><table class="s9tab"><thead><tr>'
       +'<th>Foto</th><th>Código</th><th>Qtd</th><th>Tipo</th><th>Data</th>'
       +'<th>Nº transf.</th><th>Custo unit.</th><th>Data lanç.</th><th>Descarte</th><th></th>'
@@ -663,11 +692,12 @@ function desenharShop9(){
         +'<td><button class="btn-p btn-mini" onclick="lancar(\''+q.id+'\')">Lançar</button></td>'
         +'</tr>').join('')
       +'</tbody></table></div>';
-  }).join('');
+  }).join('') + pagerHtml(pagPend, ordenado.length, 'irPagPend');
   desenharS9Hist();
 }
 function limparFiltrosS9(){
   ['s9hFilial','s9hDe','s9hAte'].forEach(id=>$(id).value='');
+  pagS9 = 1;
   desenharS9Hist();
 }
 function desenharS9Hist(){
@@ -680,10 +710,17 @@ function desenharS9Hist(){
     return true;
   });
   let totUn = 0, totVal = 0;
-  $('corpoS9Hist').innerHTML = lanc.map(q=>{
+  lanc.forEach(q=>{
     const qtd = Number(q.quantidade) || 0;
     const unit = parseFloat(String(q.shop9Custo).replace(',','.')) || 0;
     totUn += qtd; totVal += qtd * unit;
+  });
+  const totPagS9 = Math.max(1, Math.ceil(lanc.length / POR_PAGINA));
+  if(pagS9 > totPagS9) pagS9 = totPagS9;
+  const paginaS9 = lanc.slice((pagS9-1)*POR_PAGINA, pagS9*POR_PAGINA);
+  $('corpoS9Hist').innerHTML = paginaS9.map(q=>{
+    const qtd = Number(q.quantidade) || 0;
+    const unit = parseFloat(String(q.shop9Custo).replace(',','.')) || 0;
     return '<tr id="s9row_'+q.id+'">'
     +'<td>'+fotoHtml(q)+'</td>'
     +'<td><b>'+esc(q.codigo)+'</b></td>'
@@ -701,13 +738,14 @@ function desenharS9Hist(){
     +'</tr>';
   }).join('')
   + (lanc.length ? '<tr style="background:#F5F7FA;font-weight:700">'
-    +'<td colspan="2" style="text-transform:uppercase;font-size:12px;color:var(--cinza)">Total dos filtros</td>'
+    +'<td colspan="2" style="text-transform:uppercase;font-size:12px;color:var(--cinza)">Total dos filtros ('+lanc.length+' reg.)</td>'
     +'<td class="'+(totUn<0?'qtd-neg':'')+'">'+totUn+'</td>'
     +'<td colspan="3"></td>'
     +'<td style="white-space:nowrap">'+moeda(totVal)+'</td>'
     +'<td colspan="3"></td>'
     +'</tr>' : '');
   $('s9HistVazio').classList.toggle('oculto', lanc.length > 0);
+  $('pagerS9').innerHTML = pagerHtml(pagS9, lanc.length, 'irPagS9');
 }
 function editarS9(id){
   const antiga = document.getElementById('s9editrow');
@@ -746,6 +784,21 @@ async function salvarEdicaoS9(id){
     carregarQuebras();
   }catch(e){ toast(e.message, true); }
 }
+const POR_PAGINA = 10;
+let pagHist = 1, pagS9 = 1, pagTransf = 1, pagPend = 1;
+function pagerHtml(atual, totalItens, fn){
+  const tot = Math.max(1, Math.ceil(totalItens / POR_PAGINA));
+  if(tot <= 1) return '';
+  return '<div class="pager">'
+    +'<button class="btn-s btn-mini" '+(atual<=1?'disabled':'')+' onclick="'+fn+'('+(atual-1)+')">‹ Anterior</button>'
+    +'<span>Página '+atual+' de '+tot+' · '+totalItens+' registros</span>'
+    +'<button class="btn-s btn-mini" '+(atual>=tot?'disabled':'')+' onclick="'+fn+'('+(atual+1)+')">Próxima ›</button>'
+    +'</div>';
+}
+function irPagHist(p){ pagHist = p; desenharHistorico(); }
+function irPagS9(p){ pagS9 = p; desenharS9Hist(); }
+function irPagPend(p){ pagPend = p; desenharShop9(); }
+function irPagTransf(p){ pagTransf = p; desenharTransferencias(); }
 function moeda(v){
   return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 }
@@ -822,6 +875,7 @@ function popularSelectsTransf_(){
 }
 function limparFiltrosTransf(){
   ['thFilial','thDe','thAte'].forEach(id=>$(id).value='');
+  pagTransf = 1;
   desenharTransferencias();
 }
 function addProdutoRow(){
@@ -899,7 +953,10 @@ function desenharTransferencias(){
   // mais recentes primeiro
   visiveis.sort((a,b)=> (grupos[b][0].criadoEm).localeCompare(grupos[a][0].criadoEm));
   if(!visiveis.length){ box.innerHTML = '<div class="vazio">Nenhuma transferência encontrada com esses filtros.</div>'; return; }
-  box.innerHTML = visiveis.map(id=>{
+  const totPagT = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA));
+  if(pagTransf > totPagT) pagTransf = totPagT;
+  const paginaT = visiveis.slice((pagTransf-1)*POR_PAGINA, pagTransf*POR_PAGINA);
+  box.innerHTML = paginaT.map(id=>{
     const itens = grupos[id]; const c = itens[0];
     let tot = 0;
     const linhas = itens.map(p=>{
@@ -924,7 +981,7 @@ function desenharTransferencias(){
       +'<td>'+moeda(tot)+'</td></tr>'
       +'</tbody></table></div>'
     +'</div>';
-  }).join('');
+  }).join('') + pagerHtml(pagTransf, visiveis.length, 'irPagTransf');
 }
 async function excluirTransf(id){
   if(!confirm('Excluir esta transferência inteira (todos os produtos)?')) return;
