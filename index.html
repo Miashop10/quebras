@@ -282,6 +282,7 @@
           <div><label>Filial de origem *</label><select id="tOrigem"></select></div>
           <div><label>Filial de destino *</label><select id="tDestino"></select></div>
           <div><label>Nº da nota fiscal</label><input id="tNF"></div>
+          <div><label>Nº sequência Shop9</label><input id="tSeq" inputmode="numeric"></div>
         </div>
         <label style="margin-bottom:8px">Produtos</label>
         <div id="tProdutos"></div>
@@ -836,6 +837,7 @@ function editarTransf(id){
   $('tOrigem').value = c.origem;
   $('tDestino').value = c.destino;
   $('tNF').value = c.nf;
+  $('tSeq').value = c.seqShop9 || '';
   $('tProdutos').innerHTML = '';
   itens.forEach(p=>{
     addProdutoRow();
@@ -854,7 +856,7 @@ function editarTransf(id){
 function cancelarEdicaoTransf(){
   editandoTransfId = null;
   $('tData').value = hojeLocal();
-  $('tOrigem').value = ''; $('tDestino').value = ''; $('tNF').value = '';
+  $('tOrigem').value = ''; $('tDestino').value = ''; $('tNF').value = ''; $('tSeq').value = '';
   $('tProdutos').innerHTML = ''; addProdutoRow();
   $('tituloTransf').textContent = 'Nova transferência';
   $('btnSalvarTransf').textContent = 'Salvar transferência';
@@ -913,7 +915,8 @@ async function salvarTransferencia(){
   const btn = $('btnSalvarTransf'); btn.disabled = true; btn.textContent = 'Salvando…';
   try{
     const payload = { action: editandoTransfId ? 'updateTransferencia' : 'addTransferencia',
-                      data, origem, destino, nf: $('tNF').value.trim(), produtos };
+                      data, origem, destino, nf: $('tNF').value.trim(),
+                      seqShop9: $('tSeq').value.trim(), produtos };
     if(editandoTransfId) payload.id = editandoTransfId;
     await api(payload);
     toast(editandoTransfId ? 'Transferência atualizada!' : 'Transferência registrada!');
@@ -956,32 +959,45 @@ function desenharTransferencias(){
   const totPagT = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA));
   if(pagTransf > totPagT) pagTransf = totPagT;
   const paginaT = visiveis.slice((pagTransf-1)*POR_PAGINA, pagTransf*POR_PAGINA);
-  box.innerHTML = paginaT.map(id=>{
-    const itens = grupos[id]; const c = itens[0];
-    let tot = 0;
-    const linhas = itens.map(p=>{
-      const unit = parseFloat(String(p.custo).replace(',','.')) || 0;
-      const sub = (Number(p.quantidade)||0) * unit; tot += sub;
-      return '<tr><td>'+esc(p.nome)+'</td><td>'+esc(p.fornecedor)+'</td><td><b>'+esc(p.codigo)+'</b></td>'
-        +'<td>'+esc(p.quantidade)+'</td><td>'+moeda(unit)+'</td><td>'+moeda(sub)+'</td></tr>';
-    }).join('');
-    return '<div class="transf-card">'
-      +'<div class="transf-topo">'
-        +'<b>'+esc(c.origem)+' → '+esc(c.destino)+'</b>'
-        +'<span class="meta">'+brData(c.data)+(c.nf?' · NF '+esc(c.nf):'')+' · '+itens.length+' produto'+(itens.length>1?'s':'')+'</span>'
-        +'<span style="margin-left:auto;display:flex;gap:6px">'
-        +'<button class="btn-s btn-mini" onclick="editarTransf(\''+id+'\')">✏️ Editar</button>'
-        +'<button class="btn-s btn-mini" onclick="excluirTransf(\''+id+'\')">🗑️ Excluir</button>'
-        +'</span>'
-      +'</div>'
-      +'<div class="tab-wrap"><table><thead><tr>'
+  box.innerHTML = '<div class="tab-wrap"><table><thead><tr>'
+    +'<th></th><th>Data</th><th>Origem</th><th>Destino</th><th>NF</th><th>Seq. Shop9</th><th>Produtos</th><th>Total</th><th>Ações</th>'
+    +'</tr></thead><tbody>'
+    + paginaT.map(id=>{
+      const itens = grupos[id]; const c = itens[0];
+      let tot = 0;
+      const linhas = itens.map(p=>{
+        const unit = parseFloat(String(p.custo).replace(',','.')) || 0;
+        const sub = (Number(p.quantidade)||0) * unit; tot += sub;
+        return '<tr><td>'+esc(p.nome)+'</td><td>'+esc(p.fornecedor)+'</td><td><b>'+esc(p.codigo)+'</b></td>'
+          +'<td>'+esc(p.quantidade)+'</td><td>'+moeda(unit)+'</td><td>'+moeda(sub)+'</td></tr>';
+      }).join('');
+      return '<tr>'
+        +'<td><button class="btn-s btn-mini" id="tgl_'+id+'" onclick="toggleTransf(\''+id+'\')" title="Ver produtos">▸</button></td>'
+        +'<td style="white-space:nowrap">'+brData(c.data)+'</td>'
+        +'<td><b>'+esc(c.origem)+'</b></td>'
+        +'<td><b>'+esc(c.destino)+'</b></td>'
+        +'<td>'+esc(c.nf)+'</td>'
+        +'<td>'+esc(c.seqShop9||'')+'</td>'
+        +'<td>'+itens.length+'</td>'
+        +'<td style="white-space:nowrap;font-weight:700">'+moeda(tot)+'</td>'
+        +'<td style="white-space:nowrap">'
+          +'<button class="btn-s btn-mini" onclick="editarTransf(\''+id+'\')">✏️</button> '
+          +'<button class="btn-s btn-mini" onclick="excluirTransf(\''+id+'\')">🗑️</button>'
+        +'</td>'
+      +'</tr>'
+      +'<tr id="det_'+id+'" class="oculto"><td></td><td colspan="8" style="background:#FAFBFD;padding:10px 12px">'
+        +'<div class="tab-wrap"><table><thead><tr>'
         +'<th>Produto</th><th>Fornecedor</th><th>Código</th><th>Qtd</th><th>Custo unit.</th><th>Subtotal</th>'
-      +'</tr></thead><tbody>'+linhas
-      +'<tr style="background:#F5F7FA;font-weight:700"><td colspan="5" style="text-transform:uppercase;font-size:12px;color:var(--cinza)">Total</td>'
-      +'<td>'+moeda(tot)+'</td></tr>'
-      +'</tbody></table></div>'
-    +'</div>';
-  }).join('') + pagerHtml(pagTransf, visiveis.length, 'irPagTransf');
+        +'</tr></thead><tbody>'+linhas+'</tbody></table></div>'
+      +'</td></tr>';
+    }).join('')
+    +'</tbody></table></div>'
+    + pagerHtml(pagTransf, visiveis.length, 'irPagTransf');
+}
+function toggleTransf(id){
+  const det = $('det_'+id);
+  det.classList.toggle('oculto');
+  $('tgl_'+id).textContent = det.classList.contains('oculto') ? '▸' : '▾';
 }
 async function excluirTransf(id){
   if(!confirm('Excluir esta transferência inteira (todos os produtos)?')) return;
