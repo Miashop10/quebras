@@ -672,9 +672,12 @@ function desenharShop9(){
       +'<th>Foto</th><th>Código</th><th>Qtd</th><th>Tipo</th><th>Data</th>'
       +'<th>Nº transf.</th><th>Custo unit.</th><th>Data lanç.</th><th>Descarte</th><th></th>'
       +'</tr></thead><tbody>'
-      + itens.map(q=>'<tr>'
+      + itens.map(q=>'<tr id="s9prow_'+q.id+'">'
         +'<td>'+fotoHtml(q)+'</td>'
-        +'<td><b>'+esc(q.codigo)+'</b>'+(q.nf?'<div class="s9-sub">NF '+esc(q.nf)+'</div>':'')+'</td>'
+        +'<td><b>'+esc(q.codigo)+'</b>'
+          +(q.nf?'<div class="s9-sub">NF '+esc(q.nf)+'</div>':'')
+          +(q.obs?'<div class="s9-sub">📝 '+esc(q.obs)+'</div>':'')
+        +'</td>'
         +'<td>'+esc(q.quantidade)+'</td>'
         +'<td>'+pillTipo(q.tipo)+'</td>'
         +'<td style="white-space:nowrap">'+brData(q.dataQuebra)+'</td>'
@@ -690,7 +693,12 @@ function desenharShop9(){
         +'</select>'
         +'<input id="s9o_'+q.id+'" class="oculto" placeholder="Obs da avaria" style="margin-top:5px">'
         +'</td>'
-        +'<td><button class="btn-p btn-mini" onclick="lancar(\''+q.id+'\')">Lançar</button></td>'
+        +'<td style="white-space:nowrap"><button class="btn-p btn-mini" onclick="lancar(\''+q.id+'\')">Lançar</button>'
+          +'<div style="display:flex;gap:4px;margin-top:5px">'
+          +'<button class="btn-s btn-mini" title="Editar dados da quebra" onclick="editarPend(\''+q.id+'\')">✏️</button>'
+          +'<button class="btn-s btn-mini" title="Excluir" onclick="excluirQuebra(\''+q.id+'\')">🗑️</button>'
+          +'</div>'
+        +'</td>'
         +'</tr>').join('')
       +'</tbody></table></div>';
   }).join('') + pagerHtml(pagPend, ordenado.length, 'irPagPend');
@@ -805,6 +813,54 @@ function moeda(v){
 }
 function s9Avaria(id){
   $('s9o_'+id).classList.toggle('oculto', $('s9x_'+id).value !== 'avaria');
+}
+function editarPend(id){
+  const antiga = document.getElementById('s9peditrow');
+  if(antiga) antiga.remove();
+  const q = quebras.find(x=>x.id===id);
+  const row = document.getElementById('s9prow_'+id);
+  if(!q || !row) return;
+  const tipos = ['quebra na loja','quebra fornecedor'];
+  if(q.tipo && !tipos.includes(q.tipo)) tipos.push(q.tipo); // preserva tipos antigos (ex.: ajuste)
+  const tr = document.createElement('tr');
+  tr.id = 's9peditrow';
+  tr.innerHTML = '<td colspan="10" style="background:#FDF3EC">'
+    +'<div class="s9-form" style="padding:6px 0">'
+      +'<div><label>Filial</label><select id="pe_fil">'
+        +sessao.filiais.map(f=>'<option value="'+esc(f)+'"'+(q.filial===f?' selected':'')+'>'+esc(f)+'</option>').join('')
+      +'</select></div>'
+      +'<div><label>Código</label><input id="pe_cod" value="'+esc(q.codigo)+'"></div>'
+      +'<div><label>Quantidade</label><input id="pe_qtd" type="number" step="1" value="'+esc(q.quantidade)+'"></div>'
+      +'<div><label>Tipo</label><select id="pe_tipo" onchange="document.getElementById(\'pe_nfw\').classList.toggle(\'oculto\', this.value!==\'quebra fornecedor\')">'
+        +tipos.map(t=>'<option value="'+esc(t)+'"'+(q.tipo===t?' selected':'')+'>'+esc(t)+'</option>').join('')
+      +'</select></div>'
+      +'<div id="pe_nfw" class="'+(q.tipo==='quebra fornecedor'?'':'oculto')+'"><label>Nº da NF</label><input id="pe_nf" value="'+esc(q.nf)+'"></div>'
+      +'<div><label>Fornecedor</label><input id="pe_forn" value="'+esc(q.fornecedor)+'"></div>'
+      +'<div><label>Responsável</label><input id="pe_resp" value="'+esc(q.responsavel)+'"></div>'
+      +'<div><label>Funcionário</label><input id="pe_func" value="'+esc(q.funcionario)+'"></div>'
+      +'<div style="grid-column:1/-1"><label>Observações</label><input id="pe_obs" value="'+esc(q.obs)+'"></div>'
+      +'<div style="display:flex;gap:8px"><button class="btn-p" style="flex:1" onclick="salvarEdicaoPend(\''+id+'\')">Salvar</button>'
+      +'<button class="btn-s" onclick="document.getElementById(\'s9peditrow\').remove()">Cancelar</button></div>'
+    +'</div></td>';
+  row.after(tr);
+}
+async function salvarEdicaoPend(id){
+  try{
+    await api({
+      action:'updateQuebra', id,
+      filial: $('pe_fil').value,
+      codigo: $('pe_cod').value.trim(),
+      quantidade: Number($('pe_qtd').value),
+      tipo: $('pe_tipo').value,
+      nf: $('pe_nf') ? $('pe_nf').value.trim() : '',
+      fornecedor: $('pe_forn').value.trim(),
+      responsavel: $('pe_resp').value.trim(),
+      funcionario: $('pe_func').value.trim(),
+      obs: $('pe_obs').value.trim()
+    });
+    toast('Quebra atualizada!');
+    carregarQuebras();
+  }catch(e){ toast(e.message, true); }
 }
 async function lancar(id){
   const descarte = $('s9x_'+id).value;
