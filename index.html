@@ -120,6 +120,13 @@
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--azul-esc);color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;display:none;z-index:110;max-width:90vw;text-align:center}
   #toast.erro{background:var(--vermelho)}
 
+  .rel-total{background:linear-gradient(135deg,var(--azul),var(--azul-esc));color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .rel-total .rotulo{font-size:13px;font-weight:600;opacity:.92;text-transform:uppercase;letter-spacing:.4px}
+  .rel-total .valor{font-size:26px;font-weight:800}
+  .rel-linha{cursor:pointer}
+  .rel-linha:hover td{background:#FDF3EC}
+  .rel-pend{font-size:11.5px;color:var(--amarelo)}
+
   .pager{display:flex;gap:10px;align-items:center;justify-content:center;padding:12px 0 2px}
   .pager span{font-size:13px;color:var(--cinza)}
   .pager button:disabled{opacity:.4;cursor:default}
@@ -162,6 +169,7 @@
     <button id="tabBtnRegistrar" class="ativo" onclick="abrirAba('registrar')">Registrar Quebras</button>
     <button id="tabBtnShop9" class="oculto" onclick="abrirAba('shop9')">Lançamento Shop9 <span class="badge" id="badgeShop9">0</span></button>
     <button id="tabBtnTransf" class="oculto" onclick="abrirAba('transf')">Transferência</button>
+    <button id="tabBtnRel" class="oculto" onclick="abrirAba('rel')">Relatórios</button>
     <button id="tabBtnFiliais" class="oculto" onclick="abrirAba('filiais')">⚙️ Filiais</button>
   </nav>
 
@@ -309,6 +317,41 @@
       </div>
     </section>
 
+    <!-- ========== ABA RELATÓRIOS ========== -->
+    <section id="abaRel" class="oculto">
+      <div class="card" id="relResumoCard">
+        <h2>Resumo de quebras por filial (preço de custo)</h2>
+        <div class="filtros">
+          <div><label>Data de</label><input type="date" id="relDe"></div>
+          <div><label>Data até</label><input type="date" id="relAte"></div>
+          <button class="btn-s" onclick="limparFiltrosRel()">Limpar</button>
+        </div>
+        <div class="rel-total" id="relTotalGeral"></div>
+        <div class="tab-wrap">
+          <table>
+            <thead><tr><th>Filial</th><th>Lançamentos</th><th>Unidades</th><th>Valor total (custo)</th><th></th></tr></thead>
+            <tbody id="corpoRel"></tbody>
+          </table>
+        </div>
+        <div id="relVazio" class="vazio oculto">Nenhuma quebra no período selecionado.</div>
+        <p id="relAvisoPend" class="oculto" style="font-size:12.5px;color:var(--cinza);margin-top:10px">⚠️ Quebras ainda não lançadas no Shop9 não entram no valor (não têm custo definido), mas aparecem na coluna de pendentes.</p>
+      </div>
+
+      <div class="card oculto" id="relDetalheCard">
+        <h2 id="relDetalheTitulo"></h2>
+        <button class="btn-s" style="margin-bottom:12px" onclick="fecharDetalheRel()">← Voltar ao resumo</button>
+        <div class="tab-wrap">
+          <table>
+            <thead><tr>
+              <th>Foto</th><th>Código</th><th>Qtd</th><th>Tipo</th><th>Data</th><th>NF</th>
+              <th>Custo unit.</th><th>Subtotal</th><th>Descarte</th><th>Obs</th>
+            </tr></thead>
+            <tbody id="corpoRelDetalhe"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ========== ABA FILIAIS ========== -->
     <section id="abaFiliais" class="oculto">
       <div class="card">
@@ -425,6 +468,7 @@ function iniciarApp(){
   $('quemSou').textContent = master ? 'Acesso master' : 'Filial: ' + sessao.filial;
   $('tabBtnShop9').classList.toggle('oculto', !master);
   $('tabBtnTransf').classList.toggle('oculto', !master);
+  $('tabBtnRel').classList.toggle('oculto', !master);
   $('tabBtnFiliais').classList.toggle('oculto', !master);
   $('thAcoes').classList.toggle('oculto', !master);
 
@@ -457,6 +501,7 @@ function iniciarApp(){
     ['thFilial','thDe','thAte'].forEach(id=>$(id).addEventListener('input', ()=>{ pagTransf=1; desenharTransferencias(); }));
     if(!$('tProdutos').children.length) addProdutoRow();
     carregarTransferencias();
+    ['relDe','relAte'].forEach(id=>$(id).addEventListener('input', desenharRelatorio));
   }
 
   carregarQuebras();
@@ -465,8 +510,8 @@ function iniciarApp(){
 
 /* ---------- abas ---------- */
 function abrirAba(qual){
-  const abas = { registrar:'abaRegistrar', shop9:'abaShop9', transf:'abaTransf', filiais:'abaFiliais' };
-  const btns = { registrar:'tabBtnRegistrar', shop9:'tabBtnShop9', transf:'tabBtnTransf', filiais:'tabBtnFiliais' };
+  const abas = { registrar:'abaRegistrar', shop9:'abaShop9', transf:'abaTransf', rel:'abaRel', filiais:'abaFiliais' };
+  const btns = { registrar:'tabBtnRegistrar', shop9:'tabBtnShop9', transf:'tabBtnTransf', rel:'tabBtnRel', filiais:'tabBtnFiliais' };
   Object.keys(abas).forEach(a=>{
     $(abas[a]).classList.toggle('oculto', a!==qual);
     $(btns[a]).classList.toggle('ativo', a===qual);
@@ -564,7 +609,7 @@ async function carregarQuebras(){
     const r = await api({ action:'getQuebras' });
     quebras = r.quebras || [];
     desenharHistorico();
-    if(sessao.role === 'master') desenharShop9();
+    if(sessao.role === 'master'){ desenharShop9(); desenharRelatorio(); }
   }catch(e){ toast(e.message, true); }
 }
 function limparFiltros(){
@@ -954,6 +999,103 @@ async function lancar(id){
     toast('Lançado no Shop9!');
     carregarQuebras();
   }catch(e){ toast(e.message, true); }
+}
+
+/* ---------- Relatórios ---------- */
+let relFilialAberta = null;
+
+function filtrarRel(){
+  const de = $('relDe').value, ate = $('relAte').value;
+  return quebras.filter(q=>{
+    if(de  && q.dataQuebra < de)  return false;
+    if(ate && q.dataQuebra > ate) return false;
+    return true;
+  });
+}
+function limparFiltrosRel(){
+  ['relDe','relAte'].forEach(id=>$(id).value='');
+  desenharRelatorio();
+}
+function desenharRelatorio(){
+  if(sessao.role !== 'master') return;
+  const lista = filtrarRel();
+  // agrega por filial
+  const agg = {};
+  let temPendente = false;
+  lista.forEach(q=>{
+    const a = agg[q.filial] = agg[q.filial] || { lanc:0, pend:0, un:0, val:0 };
+    if(q.status === 'lancado'){
+      const unit = parseFloat(String(q.shop9Custo).replace(',','.')) || 0;
+      a.lanc++; a.un += Number(q.quantidade)||0; a.val += (Number(q.quantidade)||0) * unit;
+    } else {
+      a.pend++; temPendente = true;
+    }
+  });
+  const fils = Object.keys(agg).sort((a,b)=> agg[b].val - agg[a].val);
+  let totVal = 0, totUn = 0, totLanc = 0;
+  fils.forEach(f=>{ totVal += agg[f].val; totUn += agg[f].un; totLanc += agg[f].lanc; });
+
+  const de = $('relDe').value, ate = $('relAte').value;
+  const periodo = (de||ate) ? ((de?brData(de):'início')+' a '+(ate?brData(ate):'hoje')) : 'Todo o período';
+  $('relTotalGeral').innerHTML =
+    '<div><div class="rotulo">Valor total de quebras · '+esc(periodo)+'</div>'
+    +'<div style="font-size:12.5px;opacity:.9">'+totLanc+' lançamento'+(totLanc!==1?'s':'')+' · '+totUn+' unidade'+(totUn!==1?'s':'')+'</div></div>'
+    +'<div class="valor">'+moeda(totVal)+'</div>';
+
+  $('corpoRel').innerHTML = fils.map(f=>{
+    const a = agg[f];
+    return '<tr class="rel-linha" onclick="abrirDetalheRel(\''+encodeURIComponent(f)+'\')" title="Clique para ver as quebras desta filial">'
+      +'<td><b>'+esc(f)+'</b></td>'
+      +'<td>'+a.lanc+(a.pend?' <span class="rel-pend">(+'+a.pend+' pendente'+(a.pend>1?'s':'')+')</span>':'')+'</td>'
+      +'<td>'+a.un+'</td>'
+      +'<td style="font-weight:700">'+moeda(a.val)+'</td>'
+      +'<td style="color:var(--cinza)">Ver quebras ›</td>'
+      +'</tr>';
+  }).join('');
+  $('relVazio').classList.toggle('oculto', fils.length > 0);
+  $('relAvisoPend').classList.toggle('oculto', !temPendente);
+
+  // se um detalhe está aberto, atualiza com os novos filtros
+  if(relFilialAberta) desenharDetalheRel();
+}
+function abrirDetalheRel(filEnc){
+  relFilialAberta = decodeURIComponent(filEnc);
+  desenharDetalheRel();
+  $('relDetalheCard').classList.remove('oculto');
+  $('relDetalheCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function fecharDetalheRel(){
+  relFilialAberta = null;
+  $('relDetalheCard').classList.add('oculto');
+}
+function desenharDetalheRel(){
+  if(!relFilialAberta) return;
+  const itens = filtrarRel().filter(q=>q.filial === relFilialAberta)
+    .slice().sort((a,b)=>(b.dataQuebra+'|'+b.criadoEm).localeCompare(a.dataQuebra+'|'+a.criadoEm));
+  const de = $('relDe').value, ate = $('relAte').value;
+  const periodo = (de||ate) ? (' — '+(de?brData(de):'início')+' a '+(ate?brData(ate):'hoje')) : '';
+  $('relDetalheTitulo').textContent = 'Quebras — '+relFilialAberta+periodo;
+  let tot = 0;
+  $('corpoRelDetalhe').innerHTML = itens.map(q=>{
+    const unit = parseFloat(String(q.shop9Custo).replace(',','.')) || 0;
+    const sub = q.status==='lancado' ? (Number(q.quantidade)||0)*unit : 0;
+    tot += sub;
+    return '<tr>'
+      +'<td>'+fotoHtml(q)+'</td>'
+      +'<td><b>'+esc(q.codigo)+'</b></td>'
+      +'<td class="'+(Number(q.quantidade)<0?'qtd-neg':'')+'">'+esc(q.quantidade)+'</td>'
+      +'<td>'+pillTipo(q.tipo)+'</td>'
+      +'<td style="white-space:nowrap">'+brData(q.dataQuebra)+'</td>'
+      +'<td>'+esc(q.nf)+'</td>'
+      +'<td>'+(q.status==='lancado' ? moeda(unit) : '<span class="rel-pend">pendente</span>')+'</td>'
+      +'<td>'+(q.status==='lancado' ? moeda(sub) : '—')+'</td>'
+      +'<td>'+pillDescarte(q)+'</td>'
+      +'<td style="max-width:180px">'+esc(q.obs)+'</td>'
+      +'</tr>';
+  }).join('')
+  + (itens.length ? '<tr style="background:#F5F7FA;font-weight:700">'
+      +'<td colspan="7" style="text-transform:uppercase;font-size:12px;color:var(--cinza)">Total ('+itens.length+' registros)</td>'
+      +'<td>'+moeda(tot)+'</td><td colspan="2"></td></tr>' : '');
 }
 
 /* ---------- Transferências ---------- */
