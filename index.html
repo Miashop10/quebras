@@ -1556,7 +1556,14 @@ function desenharTransferencias(){
     return true;
   });
   // mais recentes primeiro
-  const chaveT = id => (grupos[id][0].criadoEm || grupos[id][0].data || '');
+  // ordena pela DATA da transferência (mais recente primeiro);
+  // empate no mesmo dia: a registrada por último vem antes.
+  // criadoEm corrompido (não começa com ano) é ignorado.
+  const chaveT = id => {
+    const c = grupos[id][0];
+    const ce = /^\d{4}-/.test(c.criadoEm || '') ? c.criadoEm : '';
+    return (c.data || '') + '|' + ce;
+  };
   visiveis.sort((a,b)=> chaveT(b).localeCompare(chaveT(a)));
   if(!visiveis.length){ box.innerHTML = '<div class="vazio">Nenhuma transferência encontrada com esses filtros.</div>'; return; }
   const totPagT = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA));
